@@ -1,31 +1,40 @@
 import json
-import os
 from http.server import BaseHTTPRequestHandler
-from urllib.parse import parse_qs
+import urllib.parse
 
-# Get the absolute path of q-vercel-python.json
-file_path = os.path.join(os.path.dirname(__file__), "q-vercel-python.json")
+# Load student data from the JSON file
+def load_data():
+    with open('q-vercel-python.json', 'r') as file:
+        data = json.load(file)
+    return data
 
-# Read and load the JSON data
-with open(file_path, "r") as f:
-    marks_data = json.load(f)
-
+# Handler class to process incoming requests
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        # Parse query parameters
-        query = parse_qs(self.path.split('?')[-1])
+        # Parse the query parameters
+        query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+
+        # Get 'name' parameters from the query string
         names = query.get('name', [])
 
-        # Fetch marks for requested names
-        response = {"marks": [marks_data.get(name, 0) for name in names]}
+        # Load data from the JSON file
+        data = load_data()
 
-        # Enable CORS
+        # Prepare the result dictionary
+        result = {"marks": []}
+        for name in names:
+            # Find the marks for each name
+            for entry in data:
+                if entry["name"] == name:
+                    result["marks"].append(entry["marks"])
+
+        # Send the response header
         self.send_response(200)
         self.send_header('Content-type', 'application/json')
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")  # Enable CORS for any origin
+        self.end_headers()
 
-        # Send response
-        self.wfile.write(json.dumps(response).encode('utf-8'))
+        # Send the JSON response
+        self.wfile.write(json.dumps(result).encode('utf-8'))
